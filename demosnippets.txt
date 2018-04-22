@@ -1,0 +1,49 @@
+// add between simple POST and twitter
+// --------------------------------------
+import ballerina/config;
+
+endpoint twitter:Client tweeter {
+   clientId: config:getAsString("clientId"),
+    clientSecret: config:getAsString("clientSecret"),
+    accessToken: config:getAsString("accessToken"),
+    accessTokenSecret: config:getAsString("accessTokenSecret"),
+    clientConfig:{}
+}
+// --------------------------------------
+
+// add between transformed twitter and k8s
+// --------------------------------------
+import ballerinax/kubernetes;
+
+// this goes above listener endpoint
+@kubernetes:Service{
+   serviceType:"NodePort",
+   name:"ballerina-demo"
+}
+
+// these two annotations go above the ballerina service definition
+@kubernetes:Deployment {
+   image: "pzfreo/ballerina-demo",
+   name: "ballerina-demo"
+}
+@kubernetes:ConfigMap{
+    ballerinaConf: "../twitter.toml"
+}
+// --------------------------------------
+
+// add for circuit breaker 
+endpoint http:Client homerCB {
+    circuitBreaker: {
+        rollingWindow: {
+            timeWindowMillis:10000,
+            bucketSizeMillis:1000
+        },
+        failureThreshold:0,
+        resetTimeMillis:3000,
+        statusCodes:[500,502,503,504,507,509,598,599]
+    },
+    url: "http://www.simpsonquotes.xyz/",
+    timeoutMillis:1000
+
+};
+
